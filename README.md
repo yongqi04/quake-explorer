@@ -1,0 +1,49 @@
+# Epicenter, visually
+
+An interactive page for our DS4400 earthquake puzzle: find where a quake
+started from how long its shaking took to reach each seismograph station,
+then see how accurate that is as you drag the number of stations, their
+spacing and the timing noise.
+
+- **How we find it**: one simulated quake. The map shades the timing
+  mismatch *J* everywhere, and you can play our guess's walk downhill on
+  *J* step by step.
+- **How accurate is it?**: many simulated quakes, one dot per quake at its
+  miss (km from our final guess to the true epicenter). Gray dots use the
+  prompt's default settings (10 stations, 50 km, 0.2 s), and blue dots use
+  yours. Hover a dot to preview that quake, or open it step by step.
+
+## The method
+
+`js/quake.js` is a line-for-line port of our Python estimator:
+
+    J(g)  = 1/n sum_i (||g - s_i|| / v - t_i)^2
+    dJ(g) = 1/n sum_i 2 e_i (g - s_i) / (||g - s_i|| v),  e_i = ||g - s_i|| / v - t_i
+    g <- g - alpha dJ(g)
+
+Each walk starts 1 km off (in x and in y) the station that felt the shaking
+first. It stops once a step moves the guess less than 0.001 km, or after
+1,000 steps. We walk once for each alpha = 0.01, 0.02, ..., 0.99 and keep
+the final guess with the smallest J. On the same station data it returns
+the same guesses as the Python code, bit for bit.
+
+The quakes follow the course simulator's recipe (stations and epicenter
+are n + 1 draws from one bell curve, and each delay is distance / speed
+plus timing noise, never below 0). The page draws its own random numbers,
+so quake k here is not `Earthquake(seed=k)`.
+
+## Run it
+
+Open `index.html` in a browser, or serve the folder:
+
+    python3 -m http.server 8000
+
+and visit <http://localhost:8000>. No build step and no libraries.
+
+## Publish it (after the puzzle is due)
+
+The repo starts private. To turn on the website at
+`https://<your-username>.github.io/quake-explorer/`:
+
+    gh repo edit --visibility public --accept-visibility-change-consequences
+    gh api -X POST "repos/{owner}/{repo}/pages" -f "source[branch]=main" -f "source[path]=/"
