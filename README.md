@@ -3,15 +3,19 @@
 An interactive page for our DS4400 earthquake puzzle: find where a quake
 started from how long its shaking took to reach each seismograph station,
 then see how accurate that is as you drag the number of stations, their
-spacing and the timing noise.
+spacing, the timing noise and the wave speed.
 
 - **How we find it**: one simulated quake. The map shades the timing
   mismatch *J* everywhere, and you can play our guess's walk downhill on
   *J* step by step.
 - **How accurate is it?**: many simulated quakes, one dot per quake at its
   miss (km from our final guess to the true epicenter). Gray dots use the
-  prompt's default settings (10 stations, 50 km, 0.2 s), and blue dots use
-  yours. Hover a dot to preview that quake, or open it step by step.
+  prompt's default settings (10 stations, 50 km, 0.2 s, 6 km/s), and blue
+  dots use yours. Hover a dot to preview that quake, or open it step by step.
+
+The wave speed slider (1 to 12 km/s) changes how fast the simulated shaking
+travels. As in the Python code (`estimate(quake.x, quake.t, quake.speed)`),
+the estimator is told the speed.
 
 ## The method
 

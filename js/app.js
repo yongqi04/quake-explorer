@@ -8,7 +8,7 @@
   'use strict';
   var QX = window.QX, P = window.PLOTS;
   var $ = function (id) { return document.getElementById(id); };
-  var DEFAULTS = {n: 10, spacing: 50, noise: 0.2};   // earthquake.py's defaults
+  var DEFAULTS = {n: 10, spacing: 50, noise: 0.2, speed: 6};   // earthquake.py's
 
   // each kind of quake draws its seeds from its own range, so none repeat
   function findSeed(k) { return 300000 + k; }
@@ -26,9 +26,14 @@
 
   // ------------------------------------------------------------ helpers
   function fmtNoise(v) { return Number(v.toFixed(2)) + ' s'; }
+  function fmtSpeed(v) { return Number(v.toFixed(1)) + ' km/s'; }
   function condText(c) {
     return c.n + (c.n === 1 ? ' station' : ' stations') + ' · ' + c.spacing +
-      ' km · ' + fmtNoise(c.noise);
+      ' km · ' + fmtNoise(c.noise) + ' · ' + fmtSpeed(c.speed);
+  }
+  function quakeOf(s, seed) {
+    return QX.makeQuake({n: s.n, spacing: s.spacing, noise: s.noise, speed: s.speed,
+                         seed: seed});
   }
   function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
   function readout(node, title, rows, note) {
@@ -81,13 +86,15 @@
   }
 
   // --------------------------------------------------- quake settings
-  var sliders = {n: $('c-n'), spacing: $('c-spacing'), noise: $('c-noise')};
+  var sliders = {n: $('c-n'), spacing: $('c-spacing'), noise: $('c-noise'),
+                 speed: $('c-speed')};
   function readCond() {
     state.cond = {n: +sliders.n.value, spacing: +sliders.spacing.value,
-                  noise: +sliders.noise.value};
+                  noise: +sliders.noise.value, speed: +sliders.speed.value};
     $('c-n-val').textContent = String(state.cond.n);
     $('c-spacing-val').textContent = state.cond.spacing + ' km';
     $('c-noise-val').textContent = fmtNoise(state.cond.noise);
+    $('c-speed-val').textContent = fmtSpeed(state.cond.speed);
   }
   var refreshSoon = soon(function () { refresh(); });
   function onCond() {
@@ -101,6 +108,7 @@
     sliders.n.value = DEFAULTS.n;
     sliders.spacing.value = DEFAULTS.spacing;
     sliders.noise.value = DEFAULTS.noise;
+    sliders.speed.value = DEFAULTS.speed;
     onCond();
   });
 
@@ -108,8 +116,7 @@
   function newFindQuake(quake, origin) {
     var f = state.find;
     stopPlay();
-    f.quake = quake || QX.makeQuake({n: state.cond.n, spacing: state.cond.spacing,
-                                     noise: state.cond.noise, seed: findSeed(f.k)});
+    f.quake = quake || quakeOf(state.cond, findSeed(f.k));
     f.origin = origin || null;
     f.walk = QX.bestWalk(f.quake.x, f.quake.t, f.quake.speed);
     f.losses = f.walk.path.map(function (g) {
@@ -245,8 +252,7 @@
       var t0 = performance.now();
       while (k < N && performance.now() - t0 < 9) {
         var seed = seedOf(k);
-        var q = QX.makeQuake({n: row.settings.n, spacing: row.settings.spacing,
-                              noise: row.settings.noise, seed: seed});
+        var q = quakeOf(row.settings, seed);
         var est = QX.estimate(q.x, q.t, q.speed);
         row.points.push({k: k, seed: seed, miss: QX.miss(est.guess, q), row: key,
                          settings: row.settings});
@@ -285,9 +291,10 @@
 
   var pv = {key: null};
   function previewData(pt) {
-    var s = pt.settings, key = [pt.row, pt.seed, s.n, s.spacing, s.noise].join('|');
+    var s = pt.settings;
+    var key = [pt.row, pt.seed, s.n, s.spacing, s.noise, s.speed].join('|');
     if (pv.key !== key) {
-      var q = QX.makeQuake({n: s.n, spacing: s.spacing, noise: s.noise, seed: pt.seed});
+      var q = quakeOf(s, pt.seed);
       pv = {key: key, quake: q, walk: QX.bestWalk(q.x, q.t, q.speed)};
     }
     return pv;

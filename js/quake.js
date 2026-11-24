@@ -21,7 +21,7 @@
 (function (root) {
   'use strict';
 
-  var SPEED = 6;      // wave speed, km/s
+  var SPEED = 6;      // default wave speed, km/s (earthquake.py's default)
   var RUNS = 1000;    // most steps per walk
   var TOL = 1e-3;     // stop once a step moves the guess less than this, km
   var ALPHAS = [];    // bit for bit np.arange(0.01, 1.0, 0.01) (numpy 2)
@@ -47,8 +47,8 @@
   }
 
   function makeQuake(opt) {
-    // opt: {n, spacing (km), noise (s), seed}
-    var n = opt.n, rand = rng(opt.seed);
+    // opt: {n, spacing (km), noise (s), seed, speed (km/s, default 6)}
+    var n = opt.n, rand = rng(opt.seed), v = opt.speed || SPEED;
     // per-axis sd so two random spots are `spacing` km apart on average
     var sd = opt.spacing / Math.sqrt(Math.PI);
     var y = [sd * normal(rand), sd * normal(rand)];   // hidden epicenter
@@ -56,9 +56,10 @@
     for (var i = 0; i < n; i++) x.push([sd * normal(rand), sd * normal(rand)]);
     for (i = 0; i < n; i++) {
       var d = Math.hypot(x[i][0] - y[0], x[i][1] - y[1]);
-      t.push(Math.max(d / SPEED + opt.noise * normal(rand), 0));
+      t.push(Math.max(d / v + opt.noise * normal(rand), 0));
     }
-    return {x: x, t: t, y: y, speed: SPEED, n: n, spacing: opt.spacing,
+    // like quake.speed in Python, the speed is known to the estimator
+    return {x: x, t: t, y: y, speed: v, n: n, spacing: opt.spacing,
             noise: opt.noise, seed: opt.seed};
   }
 

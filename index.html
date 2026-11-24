@@ -7,7 +7,7 @@
   <meta name="description" content="Find an earthquake's epicenter from when
     each station felt the shaking: walk a guess downhill on the timing
     mismatch, then see how accurate the walk is as you drag the number of
-    stations, their spacing and the timing noise.">
+    stations, their spacing, the timing noise and the wave speed.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%232a78d6' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='7.5' fill='none' stroke='%232a78d6' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23eb6834'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -33,7 +33,8 @@
       <h2>How we find it: walk the guess downhill</h2>
       <p class="goal problem"><b>Problem:</b> an earthquake starts at a
         hidden spot, the epicenter, and its shaking spreads through the
-        ground at about 6 km/s. Each seismograph station records how many
+        ground at a known wave speed <i>v</i> (6 km/s unless you change it
+        below). Each seismograph station records how many
         seconds after the start it felt the shaking, give or take a little
         timing noise. Where did the quake start?</p>
       <p class="goal approach"><b>Approach:</b> if the quake had started at a
@@ -64,7 +65,8 @@
       <p class="muted"><i>e</i><sub><i>i</i></sub> = &Vert;<b>g</b> &minus;
         <b>s</b><sub><i>i</i></sub>&Vert; / <i>v</i> &minus;
         <i>t</i><sub><i>i</i></sub> is station <i>i</i>'s predicted minus
-        recorded delay, and <i>v</i> = 6 km/s. Each walk starts 1 km off the
+        recorded delay, and <i>v</i> is the wave speed. Each walk starts 1 km
+        off the
         first station to feel it (in <i>x</i> and in <i>y</i>) and stops once
         a step moves the guess less than 0.001 km, or after 1,000 steps. We
         walk once for each step size <i>&alpha;</i> = 0.01, 0.02, &hellip;,
@@ -82,7 +84,8 @@
         dot per quake at its <i>miss</i>: the distance from our final guess
         to the true epicenter (km, log scale). Gray dots always use the
         prompt's default settings (10 stations, 50 km spacing, 0.2 s timing
-        noise). Blue dots use the settings you pick above them.</p>
+        noise, 6 km/s waves). Blue dots use the settings you pick above
+        them.</p>
     </div>
 
     <div class="intro-try">
@@ -125,8 +128,14 @@
         <input type="range" id="c-noise" min="0" max="2" step="0.05"
           value="0.2">
         <span class="val" id="c-noise-val"></span></label>
-      <span class="fixed">Wave speed <b>6 km/s</b></span>
-      <button id="c-reset" title="10 stations, 50 km, 0.2 s">Defaults</button>
+      <label class="slider"><span class="tip" tabindex="0"
+        data-tip="How fast the shaking travels through the ground. The first
+        (P) waves move about 5 to 7 km/s through the upper crust. As in our
+        Python code, the method is told this speed.">Wave speed</span>
+        <input type="range" id="c-speed" min="1" max="12" step="0.5"
+          value="6">
+        <span class="val" id="c-speed-val"></span></label>
+      <button id="c-reset" title="10 stations, 50 km, 0.2 s, 6 km/s">Defaults</button>
     </div>
   </section>
 

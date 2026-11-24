@@ -171,8 +171,8 @@
   function heat(quake, ext, G) {
     // J on a G x G grid as an image (log color scale), plus its range
     var mode = isDark() ? 'dark' : 'light';
-    var key = [quake.seed, quake.n, quake.spacing, quake.noise, ext.x0, ext.x1,
-               ext.y0, ext.y1, G, mode].join('|');
+    var key = [quake.seed, quake.n, quake.spacing, quake.noise, quake.speed, ext.x0,
+               ext.x1, ext.y0, ext.y1, G, mode].join('|');
     for (var i = 0; i < heatCache.length; i++) {
       if (heatCache[i].key === key) return heatCache[i];
     }
@@ -274,7 +274,8 @@
     var ext = extent(q, o.path);
     var sx = linear(ext.x0, ext.x1, m.l, m.l + side);
     var sy = linear(ext.y0, ext.y1, m.t + side, m.t);
-    var key = [q.seed, q.n, q.spacing, q.noise, W, !!o.showTruth, isDark(), compact].join('|');
+    var key = [q.seed, q.n, q.spacing, q.noise, q.speed, W, !!o.showTruth, isDark(),
+               compact].join('|');
     var surface = token('--card'), ink = token('--ink'), ink2 = token('--ink-2');
     var first = QX.argmin(q.t);
 
@@ -532,7 +533,8 @@
     if (d1 / d0 < 10) { d0 /= Math.sqrt(10 * d0 / d1); d1 = d0 * 10; }
     var x = logScale(d0, d1, m.l + 4, W - m.r);
 
-    var top = m.t, layout = [];
+    // on a narrow chart each row's settings go on a second line
+    var top = m.t, layout = [], narrow = W < 560, head = narrow ? 38 : 24;
     o.rows.forEach(function (row) {
       var xs = row.points.map(function (p) { return x(Math.max(p.miss, FLOOR)); });
       var r = 4.5, ys = dodge(xs, 2 * r + 1.5);
@@ -544,8 +546,8 @@
         spread = maxA(ys);
       }
       var band = Math.max(2 * spread + 2 * r + 10, 34);
-      layout.push({row: row, xs: xs, ys: ys, r: r, labelY: top + 14, mid: top + 24 + band / 2});
-      top += 24 + band + 8;
+      layout.push({row: row, xs: xs, ys: ys, r: r, labelY: top + 14, mid: top + head + band / 2});
+      top += head + band + 8;
     });
     var H = top + m.b;
     clear(svg);
@@ -567,7 +569,8 @@
     layout.forEach(function (L) {
       var t = txt(svg, m.l, L.labelY, '', {class: 'row-label'});
       el('tspan', null, t).textContent = L.row.label;
-      el('tspan', {class: 'row-sub', dx: 8}, t).textContent = L.row.sub;
+      el('tspan', narrow ? {class: 'row-sub', x: m.l, dy: 16} : {class: 'row-sub', dx: 8},
+         t).textContent = L.row.sub;
       var g = el('g', {opacity: L.row.dim ? 0.32 : 1}, svg);
       if (!L.row.points.length) {
         txt(svg, m.l, L.mid + 4, L.row.empty || 'Simulating…', {class: 'empty-note'});
