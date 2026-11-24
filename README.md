@@ -43,7 +43,7 @@ and visit <http://localhost:8000>. No build step and no libraries.
 ## Publish it (after the puzzle is due)
 
 The repo starts private. To turn on the website at
-`https://<your-username>.github.io/quake-explorer/`:
+`https://yongqi04.github.io/quake-explorer/`:
 
     gh repo edit --visibility public --accept-visibility-change-consequences
     gh api -X POST "repos/{owner}/{repo}/pages" -f "source[branch]=main" -f "source[path]=/"
