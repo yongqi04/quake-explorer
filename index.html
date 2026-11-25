@@ -85,7 +85,8 @@
         to the true epicenter (km, log scale). Gray dots always use the
         prompt's default settings (10 stations, 50 km spacing, 0.2 s timing
         noise, 6 km/s waves). Blue dots use the settings you pick above
-        them.</p>
+        them. The second chart keeps your stations, spacing and wave speed
+        and changes only the timing noise.</p>
     </div>
 
     <div class="intro-try">
@@ -97,6 +98,8 @@
         <li>Click or drag in the <i>J</i> chart to jump to any step.</li>
         <li>Press <em>&#8635; New quake</em>, or drag a setting, to draw a
           different quake.</li>
+        <li>Under the map, compare this quake's miss after each step
+          (orange) with 4 more quakes like it (gray).</li>
       </ul>
       <ul class="try" data-show="accuracy">
         <li>Drag a setting and compare the blue dots with the gray
@@ -105,6 +108,8 @@
           press <em>Step through it</em>.</li>
         <li>Press <em>&#8635; Resample</em> to draw a fresh set of
           quakes.</li>
+        <li>In <em>Miss against timing noise</em>, follow the columns from
+          left to right as the timing noise grows.</li>
       </ul>
     </div>
   </section>
@@ -192,6 +197,23 @@
       </div>
       <div class="card readout" id="find-readout"></div>
     </aside>
+
+    <div class="card plot steps-card" id="steps-card">
+      <div class="plot-head">
+        <h3>Miss after each step: this quake and 4 more</h3>
+        <button class="small" data-table="steps" aria-pressed="false">Table</button>
+      </div>
+      <div class="chart-box"><svg id="steps" role="img"
+        aria-label="Distance from our guess to the true epicenter after each step, for this quake and 4 more with the same settings"></svg></div>
+      <div class="table-view" id="steps-table" hidden></div>
+      <p class="key">
+        <span><i class="sw ln guess"></i> this quake (the one on the map)</span>
+        <span><i class="sw ln base"></i> 4 more quakes, same settings</span>
+      </p>
+      <p class="hint">Miss is how far the guess is from the true epicenter
+        after each step (km, log scale). <span id="steps-note"></span>Hover
+        for every quake's miss at that step.</p>
+    </div>
   </main>
 
   <main class="panel accuracy" data-show="accuracy">
@@ -212,10 +234,29 @@
         drawn at 0.001 km.</p>
     </div>
 
+    <div class="card plot noise-card" id="noise-card">
+      <div class="plot-head">
+        <h3>Miss against timing noise</h3>
+        <button class="small" data-table="noise" aria-pressed="false">Table</button>
+      </div>
+      <div class="chart-box"><svg id="noise" role="img"
+        aria-label="Miss of each simulated quake at several timing-noise levels"></svg></div>
+      <div class="table-view" id="noise-table" hidden></div>
+      <p class="key">
+        <span><i class="sw dot mine"></i> your timing noise</span>
+        <span><i class="sw dot base"></i> other noise levels</span>
+      </p>
+      <p class="hint">Every column uses the same quakes as your blue dots
+        above (your stations, spacing and wave speed); only the timing noise
+        changes. Misses under 0.0001 km sit on the bottom line. Hover a dot
+        to preview that quake.</p>
+    </div>
+
     <aside class="side">
       <div class="card controls">
         <label class="slider"><span class="tip" tabindex="0"
-          data-tip="How many quakes to simulate for each row of dots.">Quakes
+          data-tip="How many quakes to simulate for each row of dots and
+          each noise column.">Quakes
           per row</span>
           <input type="range" id="a-n" min="20" max="300" step="10"
             value="100">

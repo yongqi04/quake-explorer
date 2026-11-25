@@ -600,30 +600,172 @@
     });
     svg._dots = dots;
     svg._opts = o;
+    wireDots(svg, 16);
+  }
 
-    if (!svg._wired) {
-      var nearest = function (e) {
-        var p = local(svg, e), best = null, bd = 16 * 16;
-        (svg._dots || []).forEach(function (d) {
-          var dx = d.x - p[0], dy = d.y - p[1], d2 = dx * dx + dy * dy;
-          if (d2 < bd) { bd = d2; best = d; }
-        });
-        return best;
-      };
-      svg.addEventListener('pointermove', function (e) {
-        var d = nearest(e);
-        svg._opts.onHover(d ? d.p : null, e);
+  function wireDots(svg, reach) {
+    // hover or click the dot nearest the pointer, within reach px; the
+    // handlers read svg._dots and svg._opts, so redraws keep them working
+    if (svg._wired) return;
+    var nearest = function (e) {
+      var p = local(svg, e), best = null, bd = reach * reach;
+      (svg._dots || []).forEach(function (d) {
+        var dx = d.x - p[0], dy = d.y - p[1], d2 = dx * dx + dy * dy;
+        if (d2 < bd) { bd = d2; best = d; }
       });
-      svg.addEventListener('pointerleave', function () { svg._opts.onHover(null, null); });
-      svg.addEventListener('click', function (e) {
-        var d = nearest(e);
-        if (d) svg._opts.onClick(d.p);
+      return best;
+    };
+    svg.addEventListener('pointermove', function (e) {
+      var d = nearest(e);
+      svg._opts.onHover(d ? d.p : null, e);
+    });
+    svg.addEventListener('pointerleave', function () { svg._opts.onHover(null, null); });
+    svg.addEventListener('click', function (e) {
+      var d = nearest(e);
+      if (d) svg._opts.onClick(d.p);
+    });
+    svg._wired = true;
+  }
+
+  function yAxis(svg, y, d0, d1, m, W, H, title) {
+    // log-scale gridlines, tick labels and title, shared by the new charts
+    var grid = token('--grid');
+    logTicks(d0, d1, 6).forEach(function (v) {
+      var yy = y(v);
+      el('line', {x1: m.l, x2: W - m.r, y1: yy, y2: yy, stroke: grid}, svg);
+      txt(svg, m.l - 7, yy + 4, fmtTick(v), {'text-anchor': 'end', class: 'tick'});
+    });
+    el('line', {x1: m.l, x2: W - m.r, y1: H - m.b + 0.5, y2: H - m.b + 0.5,
+                stroke: token('--axis')}, svg);
+    txt(svg, 0, 0, title, {'text-anchor': 'middle', class: 'axis-title',
+      transform: 'translate(13,' + (m.t + (H - m.t - m.b) / 2) + ') rotate(-90)'});
+  }
+  function logDomain(values, floor) {
+    // a log range around values, at least one decade wide
+    var lo = Infinity, hi = 0;
+    values.forEach(function (v) {
+      v = Math.max(v, floor);
+      if (v < lo) lo = v;
+      if (v > hi) hi = v;
+    });
+    if (!(hi > 0)) { lo = 0.1; hi = 10; }
+    if (hi / lo < 10) { var mid = Math.sqrt(hi * lo); lo = mid / Math.sqrt(10); hi = mid * Math.sqrt(10); }
+    return [lo / 1.3, hi * 1.3];
+  }
+
+  // ------------------------------------------- miss after each step
+  function drawSteps(svg, o) {
+    // o: {series: [{label, color, values: [miss per step, km], main}],
+    //     step (marker on the main series), maxSteps}
+    var W = boxWidth(svg), H = 250, m = {l: 54, r: 14, t: 10, b: 40}, FLOOR = 1e-4;
+    var longest = Math.max.apply(null, o.series.map(function (s) { return s.values.length - 1; }));
+    var K = Math.max(Math.min(longest, o.maxSteps), 1), shown = [];
+    o.series.forEach(function (s) { shown = shown.concat(s.values.slice(0, K + 1)); });
+    var dom = logDomain(shown, FLOOR);
+    var x = linear(0, K, m.l, W - m.r), y = logScale(dom[0], dom[1], H - m.b, m.t);
+    var Y = function (v) { return y(Math.max(v, FLOOR)); };
+    clear(svg);
+    size(svg, W, H);
+    yAxis(svg, y, dom[0], dom[1], m, W, H, 'miss, km (log scale)');
+    niceTicks(0, K, 6).forEach(function (v) {
+      if (v <= K) txt(svg, x(v), H - m.b + 17, fmtTick(v), {'text-anchor': 'middle', class: 'tick'});
+    });
+    txt(svg, m.l + (W - m.l - m.r) / 2, H - 6, 'step', {'text-anchor': 'middle', class: 'axis-title'});
+
+    var surface = token('--card');
+    o.series.slice().sort(function (a, b) { return a.main - b.main; }).forEach(function (s) {
+      var pts = s.values.slice(0, K + 1).map(function (v, k) {
+        return x(k).toFixed(1) + ',' + Y(v).toFixed(1);
+      }).join(' ');
+      el('polyline', {points: pts, fill: 'none', stroke: s.color, 'stroke-width': 2,
+                      'stroke-linejoin': 'round', 'stroke-linecap': 'round',
+                      opacity: s.main ? 1 : 0.75}, svg);
+    });
+    var main = o.series.filter(function (s) { return s.main; })[0];
+    if (main && o.step <= K) {
+      var v = main.values[Math.min(o.step, main.values.length - 1)];
+      el('line', {x1: x(o.step), x2: x(o.step), y1: m.t, y2: H - m.b, stroke: token('--ink-2')}, svg);
+      el('circle', {cx: x(o.step), cy: Y(v), r: 4.5, fill: main.color, stroke: surface,
+                    'stroke-width': 4, 'paint-order': 'stroke'}, svg);
+    }
+    svg._cross = el('line', {y1: m.t, y2: H - m.b, stroke: token('--muted'), visibility: 'hidden',
+                             'pointer-events': 'none'}, svg);
+    el('rect', {x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b,
+                fill: 'transparent'}, svg);
+    svg._x = x;
+    svg._K = K;
+    svg._series = o.series;
+    if (!svg._wired) {
+      svg.addEventListener('pointermove', function (e) {
+        var k = Math.max(0, Math.min(svg._K, Math.round(svg._x.invert(local(svg, e)[0]))));
+        svg._cross.setAttribute('x1', svg._x(k));
+        svg._cross.setAttribute('x2', svg._x(k));
+        svg._cross.setAttribute('visibility', 'visible');
+        showTip(e.clientX, e.clientY, 'step ' + k, svg._series.map(function (s) {
+          var last = s.values.length - 1;
+          return fmtKm(s.values[Math.min(k, last)]) + (k > last ? ' (stopped)' : '') +
+            ' · ' + s.label;
+        }));
+      });
+      svg.addEventListener('pointerleave', function () {
+        svg._cross.setAttribute('visibility', 'hidden');
+        hideTip();
       });
       svg._wired = true;
     }
+    return longest;
+  }
+
+  // ------------------------------------------- miss against timing noise
+  function drawNoise(svg, o) {
+    // o: {levels: [{noise, total, points: [{miss, ...}], color, tags}], dim,
+    //     hover, pinned, onHover(point|null, evt), onClick(point)}
+    var W = boxWidth(svg), H = 300, m = {l: 54, r: 14, t: 12, b: 62}, FLOOR = 1e-4;
+    var all = [];
+    o.levels.forEach(function (L) { L.points.forEach(function (p) { all.push(p.miss); }); });
+    var dom = logDomain(all, FLOOR), n = o.levels.length;
+    var band = (W - m.l - m.r) / n, y = logScale(dom[0], dom[1], H - m.b, m.t);
+    var cx = function (i) { return m.l + band * (i + 0.5); };
+    clear(svg);
+    size(svg, W, H);
+    yAxis(svg, y, dom[0], dom[1], m, W, H, 'miss, km (log scale)');
+    txt(svg, m.l + (W - m.l - m.r) / 2, H - 6, 'timing noise (s)',
+        {'text-anchor': 'middle', class: 'axis-title'});
+
+    var dots = [], ink = token('--ink');
+    o.levels.forEach(function (L, i) {
+      txt(svg, cx(i), H - m.b + 17, fmtTick(L.noise), {'text-anchor': 'middle', class: 'tick'});
+      L.tags.forEach(function (tag, j) {
+        txt(svg, cx(i), H - m.b + 31 + 12 * j, tag, {'text-anchor': 'middle', class: 'tick'});
+      });
+      var g = el('g', {opacity: o.dim ? 0.32 : 1}, svg);
+      var half = Math.min(band * 0.32, 28), total = Math.max(L.total, 2);
+      L.points.forEach(function (p, k) {
+        // spread each column's dots evenly across its width, in quake order
+        var px = cx(i) - half + 2 * half * k / (total - 1), py = y(Math.max(p.miss, FLOOR));
+        el('circle', {cx: px, cy: py, r: 3, fill: L.color, 'fill-opacity': 0.55}, g);
+        dots.push({x: px, y: py, r: 3, p: p});
+      });
+      if (!L.points.length) {
+        txt(svg, cx(i), m.t + 14, '…', {'text-anchor': 'middle', class: 'empty-note'});
+      }
+    });
+    [o.pinned, o.hover].forEach(function (pt, i) {
+      if (!pt) return;
+      dots.forEach(function (d) {
+        if (d.p === pt) {
+          el('circle', {cx: d.x, cy: d.y, r: d.r + 3.5, fill: 'none', stroke: ink,
+                        'stroke-width': i === 0 ? 2.5 : 1.5}, svg);
+        }
+      });
+    });
+    svg._dots = dots;
+    svg._opts = o;
+    wireDots(svg, 10);
   }
 
   root.PLOTS = {drawMap: drawMap, drawScale: drawScale, drawLoss: drawLoss,
-                drawSwarm: drawSwarm, showTip: showTip, hideTip: hideTip,
-                fmtKm: fmtKm, fmtJ: fmtJ, isDark: isDark, token: token};
+                drawSwarm: drawSwarm, drawSteps: drawSteps, drawNoise: drawNoise,
+                showTip: showTip, hideTip: hideTip, fmtKm: fmtKm, fmtJ: fmtJ,
+                isDark: isDark, token: token};
 })(this);

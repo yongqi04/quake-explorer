@@ -123,6 +123,14 @@
       return QX.loss(f.quake.x, f.quake.t, f.quake.speed, g[0], g[1]);
     });
     f.step = f.walk.path.length - 1;     // open on the finished walk
+    // this quake and 4 more with the same settings: the miss after each step
+    var base = f.quake;
+    f.steps = [0, 1, 2, 3, 4].map(function (j) {
+      var q = j ? quakeOf(base, base.seed + j) : base;
+      var w = j ? QX.walkPath(q.x, q.t, q.speed) : f.walk;
+      return {label: j ? 'another quake ' + j : 'this quake', main: !j,
+              values: w.path.map(function (g) { return QX.miss(g, q); })};
+    });
     f.dirty = false;
   }
 
@@ -151,6 +159,13 @@
       renderFind();
     }});
     document.querySelector('[data-truth-key]').hidden = !f.truth;
+    var orange = P.token('--series-2'), gray = P.token('--deemph');
+    var longest = P.drawSteps($('steps'), {step: f.step, maxSteps: 30,
+      series: f.steps.map(function (s) {
+        return {label: s.label, main: s.main, values: s.values, color: s.main ? orange : gray};
+      })});
+    $('steps-note').textContent = longest > 30 ? 'The longest walk takes ' + longest +
+      ' steps; the chart shows the first 30. ' : '';
     var rows = [
       ['quake', f.origin ? f.origin : String(f.k)],
       ['settings', condText(q)],
@@ -178,6 +193,16 @@
         f.walk.path.map(function (p, k) {
           return [String(k), p[0].toFixed(3), p[1].toFixed(3), P.fmtJ(f.losses[k])];
         }));
+    }
+    if (!$('steps-table').hidden) {
+      var rowsOut = [];
+      for (var k = 0; k <= longest; k++) {
+        rowsOut.push([String(k)].concat(f.steps.map(function (s) {
+          return k < s.values.length ? P.fmtKm(s.values[k]) : '';
+        })));
+      }
+      table($('steps-table'), ['step'].concat(f.steps.map(function (s) { return s.label; })),
+            rowsOut);
     }
   }
 
@@ -268,6 +293,41 @@
     return row;
   }
 
+  // the noise chart: your blue row's quakes again, at each noise level
+  var NOISES = [0, 0.1, 0.2, 0.5, 1, 2];   // the levels of the notebook chart
+  function runNoise() {
+    if (jobs.noise) jobs.noise.cancelled = true;
+    var a = state.acc, c = state.cond, N = a.N, draw = a.draw, job = {cancelled: false};
+    jobs.noise = job;
+    var levels = NOISES.indexOf(c.noise) < 0 ? NOISES.concat(c.noise) : NOISES.slice();
+    levels.sort(function (p, q) { return p - q; });
+    var old = a.noise;
+    var obj = {done: false, yours: c.noise,
+               prev: old ? (old.done ? old.levels : old.prev) : null,
+               prevYours: old ? (old.done ? old.yours : old.prevYours) : null,
+               levels: levels.map(function (sd) {
+                 return {noise: sd, total: N, points: [],
+                         settings: {n: c.n, spacing: c.spacing, noise: sd, speed: c.speed}};
+               })};
+    a.noise = obj;
+    var i = 0, k = 0;
+    function tick() {
+      if (job.cancelled) return;
+      var t0 = performance.now();
+      while (i < obj.levels.length && performance.now() - t0 < 9) {
+        var col = obj.levels[i], seed = mineSeed(draw, k), q = quakeOf(col.settings, seed);
+        var est = QX.estimate(q.x, q.t, q.speed);
+        col.points.push({k: k, seed: seed, miss: QX.miss(est.guess, q), row: 'noise',
+                         settings: col.settings});
+        if (++k >= N) { k = 0; i++; }
+      }
+      if (i >= obj.levels.length) { obj.done = true; obj.prev = null; }
+      renderAccSoon();
+      if (!obj.done) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
   function startRows() {
     var a = state.acc;
     if (!a.base || a.base.N !== a.N) {
@@ -276,9 +336,10 @@
     }
     var prev = a.mine ? (a.mine.done ? a.mine.points : a.mine.prev) : null;
     a.mine = runRow('mine', state.cond, function (k) { return mineSeed(a.draw, k); }, prev);
+    runNoise();
     a.dirty = false;
     a.hover = null;
-    if (a.pinned && a.pinned.row === 'mine') a.pinned = null;
+    if (a.pinned && a.pinned.row !== 'base') a.pinned = null;
   }
 
   function rowView(row, label, color) {
@@ -288,6 +349,9 @@
             points: showPrev ? row.prev : row.points, dim: showPrev};
   }
   function pointName(pt) {
+    if (pt.row === 'noise') {
+      return 'Timing noise ' + fmtNoise(pt.settings.noise) + ', quake ' + (pt.k + 1);
+    }
     return (pt.row === 'base' ? 'Default settings' : 'Your settings') + ', quake ' + (pt.k + 1);
   }
 
@@ -344,9 +408,25 @@
     var progress = function (r) {
       return r.done ? r.N + ' quakes' : 'simulating ' + r.points.length + ' of ' + r.N + '…';
     };
+    var nz = a.noise, nzPrev = !nz.done && !!nz.prev;
+    var cols = nzPrev ? nz.prev : nz.levels, yours = nzPrev ? nz.prevYours : nz.yours;
+    var blue = P.token('--series-1'), gray = P.token('--deemph');
+    P.drawNoise($('noise'), {dim: nzPrev, hover: a.hover, pinned: a.pinned,
+      onHover: onSwarmHover, onClick: onSwarmClick,
+      levels: cols.map(function (col) {
+        var tags = [];
+        if (col.noise === DEFAULTS.noise) tags.push('(default)');
+        if (col.noise === yours) tags.push('(yours)');
+        return {noise: col.noise, total: col.total, points: col.points, tags: tags,
+                color: col.noise === yours ? blue : gray};
+      })});
+    var nzDone = 0, nzAll = 0;
+    nz.levels.forEach(function (col) { nzDone += col.points.length; nzAll += col.total; });
     readout($('acc-readout'), 'Simulated quakes', [
       ['your settings', progress(a.mine)],
-      ['default settings', progress(a.base)]
+      ['default settings', progress(a.base)],
+      ['noise chart', nz.done ? nz.levels.length + ' levels × ' + nz.levels[0].total :
+        'simulating ' + nzDone + ' of ' + nzAll + '…']
     ], 'Hover a dot for its miss; click a dot to pin it in the preview.');
     renderPreview();
     if (!$('swarm-table').hidden) {
@@ -356,6 +436,15 @@
         pts.forEach(function (p) { list.push([pair[1], String(p.k + 1), P.fmtKm(p.miss)]); });
       });
       table($('swarm-table'), ['row', 'quake', 'miss'], list);
+    }
+    if (!$('noise-table').hidden) {
+      var noiseRows = [];
+      cols.forEach(function (col) {
+        col.points.forEach(function (p) {
+          noiseRows.push([fmtNoise(col.noise), String(p.k + 1), P.fmtKm(p.miss)]);
+        });
+      });
+      table($('noise-table'), ['timing noise', 'quake', 'miss'], noiseRows);
     }
   }
 
@@ -375,8 +464,9 @@
     var a = state.acc, pt = a.pinned || a.hover;
     if (!pt) return;
     var d = previewData(pt);
-    newFindQuake(d.quake, (pt.k + 1) + ' (' + (pt.row === 'base' ? 'default' : 'your') +
-                 ' settings)');
+    var from = pt.row === 'base' ? 'default settings' : pt.row === 'noise' ?
+      'noise chart, ' + fmtNoise(pt.settings.noise) : 'your settings';
+    newFindQuake(d.quake, (pt.k + 1) + ' (' + from + ')');
     setMode('find');
   });
 

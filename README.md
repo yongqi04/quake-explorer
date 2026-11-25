@@ -7,11 +7,15 @@ spacing, the timing noise and the wave speed.
 
 - **How we find it**: one simulated quake. The map shades the timing
   mismatch *J* everywhere, and you can play our guess's walk downhill on
-  *J* step by step.
+  *J* step by step. Under the map, "Miss after each step" shows how far the
+  guess is from the true epicenter at every step, for this quake (orange)
+  and 4 more with the same settings (gray).
 - **How accurate is it?**: many simulated quakes, one dot per quake at its
   miss (km from our final guess to the true epicenter). Gray dots use the
   prompt's default settings (10 stations, 50 km, 0.2 s, 6 km/s), and blue
   dots use yours. Hover a dot to preview that quake, or open it step by step.
+  "Miss against timing noise" reruns your blue quakes at timing noise 0,
+  0.1, 0.2, 0.5, 1 and 2 s (plus yours), changing nothing else.
 
 The wave speed slider (1 to 12 km/s) changes how fast the simulated shaking
 travels. As in the Python code (`estimate(quake.x, quake.t, quake.speed)`),
