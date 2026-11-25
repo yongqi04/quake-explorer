@@ -1,17 +1,17 @@
 /* quake.js: the earthquake simulator and our epicenter estimator in plain
  * JavaScript, so the page can rerun everything while you drag a slider.
  *
- * estimate() is a line-for-line port of the team's Python method:
+ * estimate() is a line-for-line port of the team's Python method (version
+ * 2, one step size alpha = v^2):
  *
  *   J(g)  = 1/n sum_i (||g - s_i|| / v - t_i)^2      timing mismatch, s^2
  *   dJ(g) = 1/n sum_i 2 e_i (g - s_i) / (||g - s_i|| v),
  *           e_i = ||g - s_i|| / v - t_i
- *   g <- g - alpha dJ(g)
+ *   g <- g - alpha dJ(g),  alpha = v^2
  *
- * Each walk starts 1 km off (in x and in y) the station that felt the
- * quake first and stops once a step moves the guess less than 0.001 km, or
- * after 1,000 steps. We walk once per alpha = 0.01, 0.02, ..., 0.99 and
- * keep the final guess with the smallest J.
+ * The walk starts 1 km off (in x and in y) the station that felt the quake
+ * first and stops once a step moves the guess less than 0.001 km, or after
+ * 1,000 steps. Its final guess is the estimate.
  *
  * makeQuake() follows the recipe of the course's earthquake.py (stations
  * and epicenter are n + 1 draws from one bell curve; each delay is
@@ -24,8 +24,6 @@
   var SPEED = 6;      // default wave speed, km/s (earthquake.py's default)
   var RUNS = 1000;    // most steps per walk
   var TOL = 1e-3;     // stop once a step moves the guess less than this, km
-  var ALPHAS = [];    // bit for bit np.arange(0.01, 1.0, 0.01) (numpy 2)
-  for (var k = 0; k < 99; k++) ALPHAS.push((k + 1) * 0.01);
 
   // ------------------------------------------------------- random numbers
   function rng(seed) {
@@ -104,27 +102,18 @@
     return keepPath ? path : [gx, gy];
   }
 
+  function stepSize(v) { return v * v; }   // alpha = speed ** 2
+
   function estimate(x, t, v) {
-    // walk once per alpha; keep the final guess with the smallest J
-    var best = null, bestJ = Infinity, bestAlpha = NaN;
-    for (var k = 0; k < ALPHAS.length; k++) {
-      var g = walk(x, t, v, ALPHAS[k], false);
-      var j = loss(x, t, v, g[0], g[1]);
-      if (j < bestJ) { best = g; bestJ = j; bestAlpha = ALPHAS[k]; }
-    }
-    if (best === null) {        // every J was NaN: keep the first walk
-      best = walk(x, t, v, ALPHAS[0], false);
-      bestAlpha = ALPHAS[0];
-      bestJ = loss(x, t, v, best[0], best[1]);
-    }
-    return {guess: best, alpha: bestAlpha, loss: bestJ};
+    // one walk with alpha = v^2; its final guess is the estimate
+    var alpha = stepSize(v), g = walk(x, t, v, alpha, false);
+    return {guess: g, alpha: alpha, loss: loss(x, t, v, g[0], g[1])};
   }
 
-  function bestWalk(x, t, v) {
-    // the whole path of the walk estimate() keeps
-    var est = estimate(x, t, v);
-    var path = walk(x, t, v, est.alpha, true);
-    return {path: path, guess: est.guess, alpha: est.alpha, loss: est.loss};
+  function walkPath(x, t, v) {
+    // the same walk as estimate(), keeping every guess along the way
+    var alpha = stepSize(v), path = walk(x, t, v, alpha, true), g = path[path.length - 1];
+    return {path: path, guess: g, alpha: alpha, loss: loss(x, t, v, g[0], g[1])};
   }
 
   function lossGrid(x, t, v, x0, x1, y0, y1, nx, ny) {
@@ -144,9 +133,9 @@
     return Math.hypot(guess[0] - quake.y[0], guess[1] - quake.y[1]);
   }
 
-  var QX = {SPEED: SPEED, RUNS: RUNS, TOL: TOL, ALPHAS: ALPHAS, rng: rng,
-            normal: normal, makeQuake: makeQuake, argmin: argmin, loss: loss,
-            walk: walk, estimate: estimate, bestWalk: bestWalk,
+  var QX = {SPEED: SPEED, RUNS: RUNS, TOL: TOL, rng: rng, normal: normal,
+            makeQuake: makeQuake, argmin: argmin, loss: loss, walk: walk,
+            stepSize: stepSize, estimate: estimate, walkPath: walkPath,
             lossGrid: lossGrid, miss: miss};
   if (typeof module === 'object' && module.exports) module.exports = QX;
   else root.QX = QX;

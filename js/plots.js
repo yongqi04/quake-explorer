@@ -356,6 +356,13 @@
                       'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: 0.8}, dyn);
       el('polyline', {points: pts, fill: 'none', stroke: guessC, 'stroke-width': 2,
                       'stroke-linejoin': 'round', 'stroke-linecap': 'round'}, dyn);
+      if (!compact && o.path.length <= 80) {
+        // a short walk: mark where each step landed
+        for (k = 0; k < step; k++) {
+          el('circle', {cx: sx(o.path[k][0]), cy: sy(o.path[k][1]), r: 2.6, fill: guessC,
+                        stroke: surface, 'stroke-width': 1.5}, dyn);
+        }
+      }
       var g = o.path[step], gx = sx(g[0]), gy = sy(g[1]);
       el('circle', {cx: gx, cy: gy, r: compact ? 4 : 5.5, fill: guessC, stroke: surface,
                     'stroke-width': 4, 'paint-order': 'stroke'}, dyn);

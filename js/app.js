@@ -118,7 +118,7 @@
     stopPlay();
     f.quake = quake || quakeOf(state.cond, findSeed(f.k));
     f.origin = origin || null;
-    f.walk = QX.bestWalk(f.quake.x, f.quake.t, f.quake.speed);
+    f.walk = QX.walkPath(f.quake.x, f.quake.t, f.quake.speed);
     f.losses = f.walk.path.map(function (g) {
       return QX.loss(f.quake.x, f.quake.t, f.quake.speed, g[0], g[1]);
     });
@@ -156,7 +156,7 @@
       ['settings', condText(q)],
       ['step', f.step.toLocaleString('en-US') + ' of ' + last.toLocaleString('en-US')],
       ['mismatch J here', P.fmtJ(f.losses[f.step]) + ' s²'],
-      ['step size α', f.walk.alpha.toFixed(2) + ' (best of 99)'],
+      ['step size α', Number(f.walk.alpha.toFixed(2)) + ' (= v²)'],
       ['first to feel it', 'station ' + (first + 1) + ', ' + q.t[first].toFixed(2) + ' s']
     ];
     if (f.truth) rows.splice(4, 0, ['miss here', P.fmtKm(QX.miss(g, q))]);
@@ -186,7 +186,9 @@
     var f = state.find, last = f.walk.path.length - 1;
     if (f.step >= last) f.step = 0;
     f.playing = true;
-    var pos = f.step, perFrame = Math.max(last / 150, 0.5);  // about 2.5 s
+    // short walks get about 10 frames a step; long ones finish in ~2.5 s
+    var frames = Math.min(Math.max(last * 10, 60), 150);
+    var pos = f.step, perFrame = last / frames;
     function tick() {
       if (!f.playing) return;
       pos = Math.min(pos + perFrame, last);
@@ -295,7 +297,7 @@
     var key = [pt.row, pt.seed, s.n, s.spacing, s.noise, s.speed].join('|');
     if (pv.key !== key) {
       var q = quakeOf(s, pt.seed);
-      pv = {key: key, quake: q, walk: QX.bestWalk(q.x, q.t, q.speed)};
+      pv = {key: key, quake: q, walk: QX.walkPath(q.x, q.t, q.speed)};
     }
     return pv;
   }

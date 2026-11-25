@@ -23,13 +23,14 @@ the estimator is told the speed.
 
     J(g)  = 1/n sum_i (||g - s_i|| / v - t_i)^2
     dJ(g) = 1/n sum_i 2 e_i (g - s_i) / (||g - s_i|| v),  e_i = ||g - s_i|| / v - t_i
-    g <- g - alpha dJ(g)
+    g <- g - alpha dJ(g),  alpha = v^2
 
-Each walk starts 1 km off (in x and in y) the station that felt the shaking
-first. It stops once a step moves the guess less than 0.001 km, or after
-1,000 steps. We walk once for each alpha = 0.01, 0.02, ..., 0.99 and keep
-the final guess with the smallest J. On the same station data it returns
-the same guesses as the Python code, bit for bit.
+The step size is the wave speed squared (36 at 6 km/s). The walk starts
+1 km off (in x and in y) the station that felt the shaking first and stops
+once a step moves the guess less than 0.001 km, or after 1,000 steps; where
+it stops is the estimate. On the same station data it gives the same
+guesses as the Python code (version 2) to within rounding, in the same
+number of steps.
 
 The quakes follow the course simulator's recipe (stations and epicenter
 are n + 1 draws from one bell curve, and each delay is distance / speed

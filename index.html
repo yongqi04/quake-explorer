@@ -60,18 +60,18 @@
           <b>s</b><sub><i>i</i></sub></span><span>&Vert;<b>g</b> &minus;
           <b>s</b><sub><i>i</i></sub>&Vert; <i>v</i></span></span>
         <span class="sep"></span>
-        <b>g</b> &larr; <b>g</b> &minus; <i>&alpha;</i> &nabla;<i>J</i>(<b>g</b>)
+        <b>g</b> &larr; <b>g</b> &minus; <i>&alpha;</i> &nabla;<i>J</i>(<b>g</b>),
+        &nbsp;<i>&alpha;</i> = <i>v</i><sup>2</sup>
       </div>
       <p class="muted"><i>e</i><sub><i>i</i></sub> = &Vert;<b>g</b> &minus;
         <b>s</b><sub><i>i</i></sub>&Vert; / <i>v</i> &minus;
         <i>t</i><sub><i>i</i></sub> is station <i>i</i>'s predicted minus
-        recorded delay, and <i>v</i> is the wave speed. Each walk starts 1 km
-        off the
-        first station to feel it (in <i>x</i> and in <i>y</i>) and stops once
-        a step moves the guess less than 0.001 km, or after 1,000 steps. We
-        walk once for each step size <i>&alpha;</i> = 0.01, 0.02, &hellip;,
-        0.99 and keep the final guess with the smallest <i>J</i>. The map
-        shows the walk with that best <i>&alpha;</i>.</p>
+        recorded delay, and <i>v</i> is the wave speed. The step size is
+        <i>&alpha;</i> = <i>v</i><sup>2</sup>, the wave speed squared (36 at
+        6 km/s). The walk starts 1 km off the first station to feel it (in
+        <i>x</i> and in <i>y</i>) and stops once a step moves the guess less
+        than 0.001 km, or after 1,000 steps. Where it stops is our
+        estimate.</p>
     </div>
 
     <div class="intro-main" data-show="accuracy">
